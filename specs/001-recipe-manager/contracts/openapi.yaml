@@ -1,0 +1,665 @@
+openapi: 3.0.3
+info:
+  title: tblsp Recipe Manager API
+  description: REST API for managing recipes, tags, and ratings
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development server
+
+tags:
+  - name: Recipes
+    description: Recipe CRUD operations
+  - name: Tags
+    description: Tag management
+  - name: Import
+    description: Web recipe import
+  - name: Search
+    description: Search and filter operations
+
+paths:
+  /recipes:
+    get:
+      tags: [Recipes]
+      summary: List all recipes
+      description: Returns paginated list of active recipes with optional filtering
+      parameters:
+        - name: search
+          in: query
+          description: Full-text search query
+          schema:
+            type: string
+        - name: tags
+          in: query
+          description: Comma-separated tag IDs to filter by
+          schema:
+            type: string
+        - name: ingredient
+          in: query
+          description: Search within ingredients only
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [title, rating, created_at, updated_at]
+            default: created_at
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of recipes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeListResponse'
+
+    post:
+      tags: [Recipes]
+      summary: Create a new recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeInput'
+      responses:
+        '201':
+          description: Recipe created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /recipes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    get:
+      tags: [Recipes]
+      summary: Get a recipe by ID
+      responses:
+        '200':
+          description: Recipe details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeDetail'
+        '404':
+          description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags: [Recipes]
+      summary: Update a recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeInput'
+      responses:
+        '200':
+          description: Recipe updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Recipes]
+      summary: Soft-delete a recipe (move to trash)
+      responses:
+        '204':
+          description: Recipe moved to trash
+        '404':
+          description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /recipes/{id}/restore:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    post:
+      tags: [Recipes]
+      summary: Restore a recipe from trash
+      responses:
+        '200':
+          description: Recipe restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+        '404':
+          description: Recipe not found in trash
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /recipes/{id}/rating:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    put:
+      tags: [Recipes]
+      summary: Set recipe rating
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+      responses:
+        '200':
+          description: Rating updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+        '400':
+          description: Invalid rating
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Recipes]
+      summary: Remove recipe rating
+      responses:
+        '200':
+          description: Rating removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+
+  /recipes/{id}/tags:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    put:
+      tags: [Recipes]
+      summary: Set tags for a recipe (replaces existing)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tagIds]
+              properties:
+                tagIds:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: Tags updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeDetail'
+
+    post:
+      tags: [Recipes]
+      summary: Add a tag to a recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tagId]
+              properties:
+                tagId:
+                  type: integer
+      responses:
+        '200':
+          description: Tag added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeDetail'
+
+  /recipes/trash:
+    get:
+      tags: [Recipes]
+      summary: List trashed recipes
+      responses:
+        '200':
+          description: List of trashed recipes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeListResponse'
+
+  /recipes/trash/purge:
+    post:
+      tags: [Recipes]
+      summary: Permanently delete recipes older than 30 days
+      responses:
+        '200':
+          description: Purge result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  purgedCount:
+                    type: integer
+
+  /tags:
+    get:
+      tags: [Tags]
+      summary: List all tags
+      responses:
+        '200':
+          description: List of tags with recipe counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TagWithCount'
+
+    post:
+      tags: [Tags]
+      summary: Create a new tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Tag already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tags/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    put:
+      tags: [Tags]
+      summary: Rename a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+      responses:
+        '200':
+          description: Tag renamed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Tag name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Tags]
+      summary: Delete a tag (removes from all recipes)
+      responses:
+        '204':
+          description: Tag deleted
+        '404':
+          description: Tag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import:
+    post:
+      tags: [Import]
+      summary: Import recipe from URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Extracted recipe (not yet saved)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportedRecipe'
+        '400':
+          description: Invalid URL or extraction failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /suggest-tags:
+    post:
+      tags: [Tags]
+      summary: Get tag suggestions for recipe content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, ingredients]
+              properties:
+                title:
+                  type: string
+                ingredients:
+                  type: string
+                instructions:
+                  type: string
+      responses:
+        '200':
+          description: Suggested tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        confidence:
+                          type: number
+                          minimum: 0
+                          maximum: 1
+                        existingTagId:
+                          type: integer
+                          nullable: true
+
+components:
+  schemas:
+    Recipe:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        ingredientsRaw:
+          type: string
+        instructions:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        sourceUrl:
+          type: string
+          nullable: true
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - ingredientsRaw
+        - instructions
+        - createdAt
+        - updatedAt
+
+    RecipeDetail:
+      allOf:
+        - $ref: '#/components/schemas/Recipe'
+        - type: object
+          properties:
+            tags:
+              type: array
+              items:
+                $ref: '#/components/schemas/Tag'
+            ingredients:
+              type: array
+              items:
+                $ref: '#/components/schemas/Ingredient'
+
+    RecipeInput:
+      type: object
+      required:
+        - title
+        - ingredientsRaw
+        - instructions
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        ingredientsRaw:
+          type: string
+        instructions:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
+        tagIds:
+          type: array
+          items:
+            type: integer
+
+    RecipeListResponse:
+      type: object
+      properties:
+        recipes:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/Recipe'
+              - type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    TagWithCount:
+      allOf:
+        - $ref: '#/components/schemas/Tag'
+        - type: object
+          properties:
+            recipeCount:
+              type: integer
+
+    Ingredient:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        quantity:
+          type: string
+          nullable: true
+        originalText:
+          type: string
+        position:
+          type: integer
+
+    ImportedRecipe:
+      type: object
+      properties:
+        title:
+          type: string
+        ingredientsRaw:
+          type: string
+        instructions:
+          type: string
+        sourceUrl:
+          type: string
+        suggestedTags:
+          type: array
+          items:
+            type: string
+        extractionConfidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: How confident the extractor is in the results
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object

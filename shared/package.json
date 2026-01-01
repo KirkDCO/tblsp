@@ -1,0 +1,14 @@
+{
+  "name": "tblsp-shared",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for Recipe Manager",
+  "type": "module",
+  "main": "types/index.ts",
+  "types": "types/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
