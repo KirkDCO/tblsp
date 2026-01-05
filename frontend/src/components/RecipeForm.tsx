@@ -53,16 +53,21 @@ export function RecipeForm({ recipe, onSubmit, onCancel, isSubmitting, error }: 
     return () => clearTimeout(timer);
   }, [title, ingredientsRaw, instructions]);
 
-  const handleAddSuggestedTag = useCallback((tagId: number | null, tagName: string) => {
+  const handleAddSuggestedTag = useCallback(async (tagId: number | null, tagName: string) => {
     if (tagId !== null) {
       // Existing tag
       setSelectedTagIds((prev) => [...prev, tagId]);
     } else {
-      // New tag - would need to create it first
-      // For now, just remove from suggestions
-      setSuggestions((prev) => prev.filter((s) => s.name !== tagName));
+      // New tag - create it first, then add to selection
+      try {
+        const newTag = await createTagMutation.mutateAsync(tagName);
+        setSelectedTagIds((prev) => [...prev, newTag.id]);
+        setSuggestions((prev) => prev.filter((s) => s.name !== tagName));
+      } catch {
+        // Error handled by mutation
+      }
     }
-  }, []);
+  }, [createTagMutation]);
 
   useEffect(() => {
     if (recipe) {

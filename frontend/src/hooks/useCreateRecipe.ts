@@ -9,6 +9,7 @@ export function useCreateRecipe() {
     mutationFn: (input: RecipeInput) => api.post<RecipeDetail>('/recipes', input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
     },
   });
 }
