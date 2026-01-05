@@ -5,11 +5,14 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Path to backend root (accounts for dist/backend/src/db/ structure)
+const backendRoot = join(__dirname, '..', '..', '..', '..');
+
 export function initializeDatabase(): void {
   const db = getDatabase();
 
   // Read and execute the schema file
-  const schemaPath = join(__dirname, '..', '..', 'db', 'schema.sql');
+  const schemaPath = join(backendRoot, 'db', 'schema.sql');
   const schema = readFileSync(schemaPath, 'utf-8');
 
   // Execute schema statements
