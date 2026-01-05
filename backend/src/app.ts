@@ -9,18 +9,16 @@ import apiRouter from './api/index.js';
 
 const app = express();
 
-// Security middleware - relaxed CSP for production SPA serving
+// Security middleware - configured for home network HTTP deployment
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: config.nodeEnv === 'production' ? {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:'],
-      connectSrc: ["'self'"],
-    },
-  } : false,
+  // Disable HSTS - it forces HTTPS which breaks HTTP-only deployments
+  hsts: false,
+  // Disable CSP for simpler home network deployment
+  contentSecurityPolicy: false,
+  // These headers can cause issues with HTTP
+  crossOriginOpenerPolicy: false,
+  originAgentCluster: false,
 }));
 
 // CORS configuration - allow all origins for home network use
