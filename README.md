@@ -210,6 +210,38 @@ cd frontend && npm run build
 
 The backend compiles to `backend/dist/` and the frontend builds to `frontend/dist/`.
 
+## Production Deployment
+
+Use the `deploy.sh` script to automate the full deployment process:
+
+```bash
+./deploy.sh
+```
+
+This script will:
+1. Install dependencies for both frontend and backend
+2. Build both projects for production
+3. Set up the production environment (creates `backend/.env` from `.env.production`)
+4. Initialize the database
+
+After deployment completes, start the server:
+
+```bash
+# Foreground
+cd backend && npm start
+
+# Background (logs to tblsp.log)
+cd backend && nohup npm start > ../tblsp.log 2>&1 &
+```
+
+Optionally seed sample recipes:
+
+```bash
+cd backend && npm run db:seed
+```
+
+The application will be accessible at `http://<server-ip>:3001` from any device on your network.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.

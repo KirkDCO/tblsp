@@ -15,6 +15,7 @@ export function useUpdateRecipe() {
       api.put<RecipeDetail>(`/recipes/${id}`, input),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
       queryClient.setQueryData(['recipe', data.id], data);
     },
   });
