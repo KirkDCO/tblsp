@@ -5,6 +5,9 @@ node_modules/
 dist/
 build/
 
+# Runtime data
+backend/data/
+
 # Database
 *.db
 *.db-shm
