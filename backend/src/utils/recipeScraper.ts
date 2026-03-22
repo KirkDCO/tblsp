@@ -104,6 +104,31 @@ function cleanText(text: string | undefined | null): string {
     .trim();
 }
 
+// Extract ingredients grouped by section headers from HTML (e.g. NYT Cooking)
+// Looks for h3 elements with "ingredientgroup_name" in their class, each followed by a ul
+function extractGroupedIngredientsFromHtml($: cheerio.CheerioAPI): string | null {
+  const groupHeaders = $('h3[class*="ingredientgroup_name"]');
+  if (groupHeaders.length < 2) return null;
+
+  const lines: string[] = [];
+  groupHeaders.each((_, header) => {
+    const sectionName = cleanText($(header).text());
+    if (sectionName) {
+      if (lines.length > 0) lines.push('');
+      lines.push(`${sectionName}:`);
+    }
+    $(header)
+      .next('ul')
+      .find('li')
+      .each((_, li) => {
+        const text = cleanText($(li).text());
+        if (text) lines.push(text);
+      });
+  });
+
+  return lines.length > 0 ? lines.join('\n') : null;
+}
+
 // Check if ingredient lines appear to lack quantities (just names without measurements)
 function ingredientsLackQuantities(ingredientsRaw: string): boolean {
   const lines = ingredientsRaw.split('\n').filter((l) => l.trim().length > 0);
@@ -308,9 +333,12 @@ function extractJsonLdRecipe($: cheerio.CheerioAPI): ExtractedRecipe | null {
         const availableImages = extractAllImageUrls(recipe.image);
         const imageUrl = availableImages[0] ?? null;
 
-        // Check if JSON-LD ingredients appear incomplete (missing quantities)
-        // If most ingredients lack numbers/measurements, try HTML table extraction
-        if (ingredients && ingredientsLackQuantities(ingredients)) {
+        // Check if HTML has ingredient group sections (e.g. NYT Cooking)
+        const groupedIngredients = extractGroupedIngredientsFromHtml($);
+        if (groupedIngredients) {
+          ingredients = groupedIngredients;
+        } else if (ingredients && ingredientsLackQuantities(ingredients)) {
+          // JSON-LD ingredients appear incomplete (missing quantities); try HTML table extraction
           const tableIngredients = extractTableIngredients($);
           if (tableIngredients) {
             ingredients = tableIngredients;
@@ -515,12 +543,16 @@ function extractInstructions(instructions: unknown): string {
         const step = item as HowToStep;
 
         // Handle HowToSection (groups of steps)
+        // itemListElement may be a single object or an array
         if (step['@type'] === 'HowToSection' && step.itemListElement) {
           const sectionName = cleanText(step.name);
           if (sectionName) {
             steps.push(`\n**${sectionName}**`);
           }
-          for (const subStep of step.itemListElement) {
+          const subSteps = Array.isArray(step.itemListElement)
+            ? step.itemListElement
+            : [step.itemListElement];
+          for (const subStep of subSteps) {
             const text = cleanText(subStep.text || subStep.name);
             if (text) steps.push(text);
           }
