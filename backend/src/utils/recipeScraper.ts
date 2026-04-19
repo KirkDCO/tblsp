@@ -600,9 +600,15 @@ function extractInstructions(instructions: unknown): string {
       .join('\n\n');
   }
 
-  // Single object (rare but possible)
+  // Single object (rare but possible) — e.g. NYT Cooking wraps all steps in one HowToSection
   if (typeof instructions === 'object') {
     const step = instructions as HowToStep;
+    // Delegate to array handler if it has itemListElement
+    if (step.itemListElement) {
+      return extractInstructions(
+        Array.isArray(step.itemListElement) ? step.itemListElement : [step.itemListElement]
+      );
+    }
     const text = cleanText(step.text || step.name);
     return text ? `1. ${text}` : '';
   }
